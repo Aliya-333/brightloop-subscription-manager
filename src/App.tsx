@@ -1,4 +1,4 @@
-
+import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -27,15 +27,15 @@ import {
 import "./App.css";
 
 const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard },
-  { label: "Products", icon: Package },
-  { label: "Plans", icon: Layers },
-  { label: "Subscriptions", icon: Repeat },
-  { label: "Invoices", icon: FileText },
-  { label: "Payments", icon: CreditCard },
-  { label: "Customers", icon: Users },
-  { label: "Discounts", icon: BadgePercent },
-  { label: "Reports", icon: ChartNoAxesCombined },
+  { label: "Dashboard", page: "Dashboard", icon: LayoutDashboard },
+  { label: "Products", page: "Products", icon: Package },
+  { label: "Plans", page: "Plans", icon: Layers },
+  { label: "Subscriptions", page: "Subscriptions", icon: Repeat },
+  { label: "Invoices", page: "Invoices", icon: FileText },
+  { label: "Payments", page: "Payments", icon: CreditCard },
+  { label: "Customers", page: "Customers", icon: Users },
+  { label: "Discounts", page: "Discounts", icon: BadgePercent },
+  { label: "Reports", page: "Reports", icon: ChartNoAxesCombined },
 ];
 
 const stats = [
@@ -101,6 +101,7 @@ const activities = [
 ];
 
 function App() {
+  const [activePage, setActivePage] = useState("Dashboard");
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -112,47 +113,55 @@ function App() {
         <div className="nav-section-title">WORKSPACE</div>
 
         <nav className="navigation">
-          {navigation.map((item, index) => {
-            const Icon = item.icon;
+  {navigation.map((item) => {
+    const Icon = item.icon;
 
-            return (
-              <a
-                href="#"
-                key={item.label}
-                className={`nav-item ${index === 0 ? "active" : ""}`}
-                onClick={(e) => e.preventDefault()}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </a>
-            );
-          })}
-        </nav>
+    return (
+      <button
+        key={item.label}
+        className={`nav-item ${activePage === item.page ? "active" : ""}`}
+        onClick={() => setActivePage(item.page)}
+      >
+        <Icon size={18} />
+        <span>{item.label}</span>
+      </button>
+    );
+  })}
+</nav>
 
-        <div className="sidebar-bottom">
-          <a href="#" className="nav-item" onClick={(e) => e.preventDefault()}>
-            <Settings size={18} />
-            <span>Settings</span>
-          </a>
+<div className="sidebar-bottom">
+  <button
+    className={`nav-item ${activePage === "Settings" ? "active" : ""}`}
+    onClick={() => setActivePage("Settings")}
+  >
+    <Settings size={18} />
+    <span>Settings</span>
+  </button>
 
-          <a href="#" className="nav-item" onClick={(e) => e.preventDefault()}>
-            <UsersRound size={18} />
-            <span>Team</span>
-          </a>
+  <button
+    className={`nav-item ${activePage === "Team" ? "active" : ""}`}
+    onClick={() => setActivePage("Team")}
+  >
+    <UsersRound size={18} />
+    <span>Team</span>
+  </button>
 
-          <a href="#" className="nav-item" onClick={(e) => e.preventDefault()}>
-            <HelpCircle size={18} />
-            <span>Help & Support</span>
-          </a>
+  <button
+    className={`nav-item ${activePage === "Help & Support" ? "active" : ""}`}
+    onClick={() => setActivePage("Help & Support")}
+  >
+    <HelpCircle size={18} />
+    <span>Help & Support</span>
+  </button>
 
-          <div className="profile-card">
-            <div className="profile-avatar">A</div>
-            <div className="profile-info">
-              <strong>Admin User</strong>
-              <span>Administrator</span>
-            </div>
-          </div>
-        </div>
+  <div className="profile-card">
+    <div className="profile-avatar">A</div>
+    <div className="profile-info">
+      <strong>Admin User</strong>
+      <span>Administrator</span>
+    </div>
+  </div>
+</div>
       </aside>
 
       <main className="main-area">
@@ -184,8 +193,9 @@ function App() {
           </div>
         </header>
 
-        <div className="dashboard-content">
-          <section className="welcome-section">
+        {activePage === "Dashboard" ? (
+  <div className="dashboard-content">
+    <section className="welcome-section">
             <div>
               <div className="welcome-label">SATURDAY, OCTOBER 31, 2026</div>
               <h1>Welcome back, Admin!</h1>
@@ -380,10 +390,26 @@ function App() {
           </section>
 
           <footer className="dashboard-footer">
-            Brightloop Subscription Manager <span>•</span> Odoo x Make-A-Ton 9.0 Kochi 2026
-          </footer>
-        </div>
-      </main>
+  Brightloop Subscription Manager <span>•</span> Odoo x Make-A-Ton 9.0 Kochi 2026
+</footer>
+  </div>
+) : (
+  <div className="dashboard-content">
+    <section className="welcome-section">
+      <div>
+        <div className="welcome-label">BRIGHTLOOP WORKSPACE</div>
+        <h1>{activePage}</h1>
+        <p>Manage your {activePage.toLowerCase()} here.</p>
+      </div>
+    </section>
+
+    <section className="panel">
+      <h3>{activePage} Management</h3>
+      <p>This page is ready for its module integration.</p>
+    </section>
+  </div>
+)}
+</main>
     </div>
   );
 }
