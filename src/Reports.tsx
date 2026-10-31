@@ -2,11 +2,8 @@ import { useMemo, useState } from "react";
 import {
   Download,
   IndianRupee,
-  TrendingUp,
-  TrendingDown,
   CreditCard,
   FileText,
-  Users,
   CalendarDays,
   ArrowUpRight,
   ArrowDownRight,
