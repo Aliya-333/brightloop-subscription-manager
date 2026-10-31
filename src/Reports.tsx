@@ -1,788 +1,374 @@
-
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import {
-  Plus,
-  Search,
-  Tag,
-  Percent,
+  Download,
   IndianRupee,
-  CalendarDays,
+  TrendingUp,
+  TrendingDown,
+  CreditCard,
+  FileText,
   Users,
-  Pencil,
-  Trash2,
-  X,
-  CheckCircle2,
-  Clock,
-  Ban,
+  CalendarDays,
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
 } from "lucide-react";
-import "./Discounts.css";
+import "./Reports.css";
 
-type DiscountType = "Percentage" | "Fixed";
-type AppliesTo = "Products" | "Subscriptions" | "Both";
-type DiscountStatus = "Active" | "Scheduled" | "Expired" | "Inactive";
+type Period = "7 days" | "30 days" | "90 days" | "This year";
 
-type Discount = {
-  id: number;
-  code: string;
-  name: string;
-  type: DiscountType;
-  value: number;
-  minPurchase: number;
-  minQuantity: number;
-  startDate: string;
-  endDate: string;
-  usageLimit: number;
-  usedCount: number;
-  appliesTo: AppliesTo;
-  status: DiscountStatus;
-};
-
-const initialDiscounts: Discount[] = [
-  {
-    id: 1,
-    code: "WELCOME20",
-    name: "Welcome Offer",
-    type: "Percentage",
-    value: 20,
-    minPurchase: 500,
-    minQuantity: 1,
-    startDate: "2026-01-01",
-    endDate: "2027-01-31",
-    usageLimit: 500,
-    usedCount: 125,
-    appliesTo: "Both",
-    status: "Active",
-  },
-  {
-    id: 2,
-    code: "SAVE500",
-    name: "Flat Savings",
-    type: "Fixed",
-    value: 500,
-    minPurchase: 2000,
-    minQuantity: 1,
-    startDate: "2026-10-01",
-    endDate: "2026-12-31",
-    usageLimit: 200,
-    usedCount: 48,
-    appliesTo: "Subscriptions",
-    status: "Active",
-  },
-  {
-    id: 3,
-    code: "NEWYEAR15",
-    name: "New Year Special",
-    type: "Percentage",
-    value: 15,
-    minPurchase: 1000,
-    minQuantity: 2,
-    startDate: "2027-01-01",
-    endDate: "2027-01-31",
-    usageLimit: 300,
-    usedCount: 0,
-    appliesTo: "Products",
-    status: "Scheduled",
-  },
-  {
-    id: 4,
-    code: "EARLYBIRD",
-    name: "Early Bird Offer",
-    type: "Percentage",
-    value: 10,
-    minPurchase: 0,
-    minQuantity: 1,
-    startDate: "2026-01-01",
-    endDate: "2026-06-30",
-    usageLimit: 100,
-    usedCount: 100,
-    appliesTo: "Both",
-    status: "Expired",
-  },
+const monthlyRevenue = [
+  { month: "Jan", revenue: 42000, previous: 35000 },
+  { month: "Feb", revenue: 51000, previous: 39000 },
+  { month: "Mar", revenue: 47000, previous: 43000 },
+  { month: "Apr", revenue: 63000, previous: 48000 },
+  { month: "May", revenue: 58000, previous: 52000 },
+  { month: "Jun", revenue: 74000, previous: 56000 },
+  { month: "Jul", revenue: 68000, previous: 61000 },
+  { month: "Aug", revenue: 82000, previous: 65000 },
+  { month: "Sep", revenue: 76000, previous: 69000 },
+  { month: "Oct", revenue: 91000, previous: 73000 },
+  { month: "Nov", revenue: 85000, previous: 78000 },
+  { month: "Dec", revenue: 105000, previous: 84000 },
 ];
 
-const emptyForm = {
-  code: "",
-  name: "",
-  type: "Percentage" as DiscountType,
-  value: "",
-  minPurchase: "0",
-  minQuantity: "1",
-  startDate: "",
-  endDate: "",
-  usageLimit: "",
-  appliesTo: "Both" as AppliesTo,
-};
+const paymentMethods = [
+  { name: "UPI", amount: 145000, percentage: 42 },
+  { name: "Credit / Debit Card", amount: 103000, percentage: 30 },
+  { name: "Bank Transfer", amount: 69000, percentage: 20 },
+  { name: "Cash", amount: 28000, percentage: 8 },
+];
 
-function getStatus(discount: Discount): DiscountStatus {
-  if (discount.status === "Inactive") return "Inactive";
+const transactions = [
+  { id: "PAY-1042", customer: "Aarav Technologies", date: "28 Oct 2026", method: "UPI", amount: 4999, status: "Completed" },
+  { id: "PAY-1041", customer: "Nova Solutions", date: "27 Oct 2026", method: "Card", amount: 2499, status: "Completed" },
+  { id: "PAY-1040", customer: "Pixel Studio", date: "26 Oct 2026", method: "Bank Transfer", amount: 7999, status: "Pending" },
+  { id: "PAY-1039", customer: "GreenLeaf Systems", date: "25 Oct 2026", method: "UPI", amount: 1499, status: "Completed" },
+  { id: "PAY-1038", customer: "CloudNine Media", date: "24 Oct 2026", method: "Card", amount: 3999, status: "Failed" },
+];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+const invoiceSummary = [
+  { label: "Paid Invoices", count: 186, amount: 285000, status: "paid" },
+  { label: "Outstanding", count: 24, amount: 42000, status: "pending" },
+  { label: "Overdue", count: 8, amount: 18000, status: "overdue" },
+];
 
-  const start = new Date(`${discount.startDate}T00:00:00`);
-  const end = new Date(`${discount.endDate}T23:59:59`);
+const subscriptionGrowth = [
+  { month: "Jan", newSubs: 18, cancelled: 4 },
+  { month: "Feb", newSubs: 24, cancelled: 5 },
+  { month: "Mar", newSubs: 21, cancelled: 3 },
+  { month: "Apr", newSubs: 30, cancelled: 6 },
+  { month: "May", newSubs: 27, cancelled: 4 },
+  { month: "Jun", newSubs: 36, cancelled: 7 },
+];
 
-  if (discount.usedCount >= discount.usageLimit) return "Expired";
-  if (today < start) return "Scheduled";
-  if (today > end) return "Expired";
-
-  return "Active";
-}
-
-function formatDate(date: string) {
-  if (!date) return "—";
-
-  return new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatMoney(amount: number) {
+function money(amount: number) {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
 
-export default function Discounts() {
-  const [discounts, setDiscounts] = useState<Discount[]>(initialDiscounts);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [error, setError] = useState("");
-  const [form, setForm] = useState(emptyForm);
+export default function Reports() {
+  const [period, setPeriod] = useState<Period>("30 days");
 
-  const currentDiscounts = useMemo(
-    () =>
-      discounts.map((discount) => ({
-        ...discount,
-        status: getStatus(discount),
-      })),
-    [discounts]
+  const metrics = useMemo(() => {
+    const multiplier =
+      period === "7 days" ? 0.25 :
+      period === "30 days" ? 1 :
+      period === "90 days" ? 2.8 : 9.5;
+
+    return {
+      revenue: Math.round(348000 * multiplier),
+      collected: Math.round(285000 * multiplier),
+      outstanding: Math.round(42000 * multiplier),
+      overdue: Math.round(18000 * multiplier),
+      activeSubscriptions: 248,
+      collectionRate: 91.2,
+    };
+  }, [period]);
+
+  const maxRevenue = Math.max(
+    ...monthlyRevenue.map((item) => item.revenue)
   );
 
-  const filteredDiscounts = currentDiscounts.filter((discount) => {
-    const matchesSearch =
-      discount.name.toLowerCase().includes(search.toLowerCase()) ||
-      discount.code.toLowerCase().includes(search.toLowerCase());
-
-    const matchesFilter =
-      filter === "All" || discount.status === filter;
-
-    return matchesSearch && matchesFilter;
-  });
-
-  const activeCount = currentDiscounts.filter(
-    (discount) => discount.status === "Active"
-  ).length;
-
-  const scheduledCount = currentDiscounts.filter(
-    (discount) => discount.status === "Scheduled"
-  ).length;
-
-  const totalUsed = discounts.reduce(
-    (sum, discount) => sum + discount.usedCount,
-    0
+  const maxGrowth = Math.max(
+    ...subscriptionGrowth.map((item) => item.newSubs)
   );
 
-  function openAddModal() {
-    setEditingId(null);
-    setForm(emptyForm);
-    setError("");
-    setShowModal(true);
-  }
+  function exportCSV() {
+    const rows = [
+      ["Payment ID", "Customer", "Date", "Method", "Amount", "Status"],
+      ...transactions.map((item) => [
+        item.id,
+        item.customer,
+        item.date,
+        item.method,
+        String(item.amount),
+        item.status,
+      ]),
+    ];
 
-  function openEditModal(discount: Discount) {
-    setEditingId(discount.id);
-    setForm({
-      code: discount.code,
-      name: discount.name,
-      type: discount.type,
-      value: String(discount.value),
-      minPurchase: String(discount.minPurchase),
-      minQuantity: String(discount.minQuantity),
-      startDate: discount.startDate,
-      endDate: discount.endDate,
-      usageLimit: String(discount.usageLimit),
-      appliesTo: discount.appliesTo,
-    });
-    setError("");
-    setShowModal(true);
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-
-    const value = Number(form.value);
-    const minPurchase = Number(form.minPurchase);
-    const minQuantity = Number(form.minQuantity);
-    const usageLimit = Number(form.usageLimit);
-
-    if (
-      !form.code.trim() ||
-      !form.name.trim() ||
-      !form.startDate ||
-      !form.endDate
-    ) {
-      setError("Please complete all required fields.");
-      return;
-    }
-
-    if (
-      !Number.isFinite(value) ||
-      value <= 0 ||
-      (form.type === "Percentage" && value > 100)
-    ) {
-      setError(
-        form.type === "Percentage"
-          ? "Enter a percentage between 1 and 100."
-          : "Enter a valid discount amount."
-      );
-      return;
-    }
-
-    if (
-      !Number.isFinite(minPurchase) ||
-      minPurchase < 0 ||
-      !Number.isInteger(minQuantity) ||
-      minQuantity < 1 ||
-      !Number.isInteger(usageLimit) ||
-      usageLimit < 1
-    ) {
-      setError("Check the minimum purchase, quantity, and usage limit.");
-      return;
-    }
-
-    if (form.endDate < form.startDate) {
-      setError("End date must be after the start date.");
-      return;
-    }
-
-    const normalizedCode = form.code.trim().toUpperCase();
-
-    const duplicate = discounts.some(
-      (discount) =>
-        discount.code.toUpperCase() === normalizedCode &&
-        discount.id !== editingId
-    );
-
-    if (duplicate) {
-      setError("This discount code already exists.");
-      return;
-    }
-
-    if (editingId !== null) {
-      setDiscounts((previous) =>
-        previous.map((discount) =>
-          discount.id === editingId
-            ? {
-                ...discount,
-                code: normalizedCode,
-                name: form.name.trim(),
-                type: form.type,
-                value,
-                minPurchase,
-                minQuantity,
-                startDate: form.startDate,
-                endDate: form.endDate,
-                usageLimit,
-                appliesTo: form.appliesTo,
-              }
-            : discount
-        )
-      );
-    } else {
-      const newDiscount: Discount = {
-        id: Date.now(),
-        code: normalizedCode,
-        name: form.name.trim(),
-        type: form.type,
-        value,
-        minPurchase,
-        minQuantity,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        usageLimit,
-        usedCount: 0,
-        appliesTo: form.appliesTo,
-        status: "Active",
-      };
-
-      setDiscounts((previous) => [newDiscount, ...previous]);
-    }
-
-    setShowModal(false);
-    setForm(emptyForm);
-  }
-
-  function toggleStatus(id: number) {
-    setDiscounts((previous) =>
-      previous.map((discount) =>
-        discount.id === id
-          ? {
-              ...discount,
-              status:
-                getStatus(discount) === "Inactive" ? "Active" : "Inactive",
-            }
-          : discount
+    const csv = rows
+      .map((row) =>
+        row.map((value) => `"${value.replace(/"/g, '""')}"`).join(",")
       )
-    );
-  }
+      .join("\n");
 
-  function deleteDiscount(id: number) {
-    if (!window.confirm("Are you sure you want to delete this discount?")) {
-      return;
-    }
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
 
-    setDiscounts((previous) =>
-      previous.filter((discount) => discount.id !== id)
-    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "brightloop-reports.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
-    <div className="discounts-page">
-      <div className="discounts-header">
+    <div className="reports-page">
+      <header className="reports-header">
         <div>
-          <p className="discounts-eyebrow">REVENUE MANAGEMENT</p>
-          <h1>Discounts</h1>
-          <p className="discounts-subtitle">
-            Create and manage promotional offers and discount codes.
+          <p className="reports-eyebrow">BUSINESS INTELLIGENCE</p>
+          <h1>Reports & Analytics</h1>
+          <p className="reports-subtitle">
+            Track revenue, subscriptions, invoices, and payment performance.
           </p>
         </div>
 
-        <button className="discount-primary-btn" onClick={openAddModal}>
-          <Plus size={18} />
-          Create Discount
+        <button className="reports-export-btn" onClick={exportCSV}>
+          <Download size={17} />
+          Export CSV
         </button>
+      </header>
+
+      <div className="reports-filter-row">
+        <div className="reports-period-label">
+          <CalendarDays size={17} />
+          Reporting period
+        </div>
+
+        <select
+          value={period}
+          onChange={(event) => setPeriod(event.target.value as Period)}
+          className="reports-period-select"
+        >
+          <option value="7 days">Last 7 days</option>
+          <option value="30 days">Last 30 days</option>
+          <option value="90 days">Last 90 days</option>
+          <option value="This year">This year</option>
+        </select>
       </div>
 
-      <div className="discount-stats">
-        <div className="discount-stat-card">
-          <div className="discount-stat-icon purple">
-            <Tag size={20} />
+      <section className="reports-kpi-grid">
+        <article className="reports-kpi-card">
+          <div className="reports-kpi-top">
+            <span>Total Revenue</span>
+            <span className="reports-kpi-icon purple"><IndianRupee size={19} /></span>
           </div>
+          <h2>{money(metrics.revenue)}</h2>
+          <p className="reports-positive"><ArrowUpRight size={15} /> 12.8% <span>vs previous period</span></p>
+        </article>
+
+        <article className="reports-kpi-card">
+          <div className="reports-kpi-top">
+            <span>Collected Payments</span>
+            <span className="reports-kpi-icon green"><Wallet size={19} /></span>
+          </div>
+          <h2>{money(metrics.collected)}</h2>
+          <p className="reports-positive"><ArrowUpRight size={15} /> 8.4% <span>vs previous period</span></p>
+        </article>
+
+        <article className="reports-kpi-card">
+          <div className="reports-kpi-top">
+            <span>Outstanding Amount</span>
+            <span className="reports-kpi-icon orange"><CreditCard size={19} /></span>
+          </div>
+          <h2>{money(metrics.outstanding)}</h2>
+          <p className="reports-neutral">Awaiting payment</p>
+        </article>
+
+        <article className="reports-kpi-card">
+          <div className="reports-kpi-top">
+            <span>Overdue Amount</span>
+            <span className="reports-kpi-icon red"><FileText size={19} /></span>
+          </div>
+          <h2>{money(metrics.overdue)}</h2>
+          <p className="reports-negative"><ArrowDownRight size={15} /> 3.2% <span>overdue invoices</span></p>
+        </article>
+      </section>
+
+      <section className="reports-main-grid">
+        <article className="reports-panel reports-revenue-panel">
+          <div className="reports-panel-heading">
+            <div>
+              <h3>Revenue Overview</h3>
+              <p>Monthly revenue performance</p>
+            </div>
+            <span className="reports-chart-legend">
+              <i className="legend-current" /> Current year
+              <i className="legend-previous" /> Previous year
+            </span>
+          </div>
+
+          <div className="reports-bar-chart">
+            {monthlyRevenue.map((item) => (
+              <div className="reports-bar-group" key={item.month}>
+                <div className="reports-bars">
+                  <div
+                    className="reports-bar previous"
+                    style={{ height: `${(item.previous / maxRevenue) * 100}%` }}
+                    title={`Previous: ${money(item.previous)}`}
+                  />
+                  <div
+                    className="reports-bar current"
+                    style={{ height: `${(item.revenue / maxRevenue) * 100}%` }}
+                    title={`Current: ${money(item.revenue)}`}
+                  />
+                </div>
+                <span>{item.month}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="reports-panel">
+          <div className="reports-panel-heading">
+            <div>
+              <h3>Payment Methods</h3>
+              <p>Collection by payment type</p>
+            </div>
+          </div>
+
+          <div className="reports-payment-list">
+            {paymentMethods.map((method) => (
+              <div className="reports-payment-item" key={method.name}>
+                <div className="reports-payment-info">
+                  <strong>{method.name}</strong>
+                  <span>{money(method.amount)} · {method.percentage}%</span>
+                </div>
+                <div className="reports-progress-track">
+                  <span style={{ width: `${method.percentage}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="reports-bottom-grid">
+        <article className="reports-panel">
+          <div className="reports-panel-heading">
+            <div>
+              <h3>Subscription Growth</h3>
+              <p>New subscriptions and cancellations</p>
+            </div>
+          </div>
+
+          <div className="reports-growth-list">
+            {subscriptionGrowth.map((item) => (
+              <div className="reports-growth-row" key={item.month}>
+                <span className="reports-growth-month">{item.month}</span>
+                <div className="reports-growth-bars">
+                  <span
+                    className="reports-growth-new"
+                    style={{ width: `${(item.newSubs / maxGrowth) * 100}%` }}
+                  />
+                  <span
+                    className="reports-growth-cancelled"
+                    style={{ width: `${(item.cancelled / maxGrowth) * 100}%` }}
+                  />
+                </div>
+                <strong>{item.newSubs}</strong>
+                <small>-{item.cancelled}</small>
+              </div>
+            ))}
+          </div>
+
+          <div className="reports-growth-legend">
+            <span><i className="legend-current" /> New subscriptions</span>
+            <span><i className="legend-previous" /> Cancelled</span>
+          </div>
+        </article>
+
+        <article className="reports-panel">
+          <div className="reports-panel-heading">
+            <div>
+              <h3>Invoice Summary</h3>
+              <p>Current invoice status</p>
+            </div>
+          </div>
+
+          <div className="reports-invoice-list">
+            {invoiceSummary.map((invoice) => (
+              <div className="reports-invoice-item" key={invoice.label}>
+                <div>
+                  <span className={`reports-invoice-dot ${invoice.status}`} />
+                  <strong>{invoice.label}</strong>
+                  <small>{invoice.count} invoices</small>
+                </div>
+                <b>{money(invoice.amount)}</b>
+              </div>
+            ))}
+          </div>
+
+          <div className="reports-collection-rate">
+            <div>
+              <span>Payment collection rate</span>
+              <strong>{metrics.collectionRate}%</strong>
+            </div>
+            <div className="reports-progress-track">
+              <span style={{ width: `${metrics.collectionRate}%` }} />
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="reports-panel reports-transactions-panel">
+        <div className="reports-panel-heading">
           <div>
-            <p>Total Discounts</p>
-            <h2>{discounts.length}</h2>
+            <h3>Recent Transactions</h3>
+            <p>Latest payment activity</p>
           </div>
+          <button className="reports-text-btn" onClick={exportCSV}>
+            <Download size={15} /> Download
+          </button>
         </div>
 
-        <div className="discount-stat-card">
-          <div className="discount-stat-icon green">
-            <CheckCircle2 size={20} />
-          </div>
-          <div>
-            <p>Active Discounts</p>
-            <h2>{activeCount}</h2>
-          </div>
-        </div>
-
-        <div className="discount-stat-card">
-          <div className="discount-stat-icon orange">
-            <Clock size={20} />
-          </div>
-          <div>
-            <p>Scheduled Discounts</p>
-            <h2>{scheduledCount}</h2>
-          </div>
-        </div>
-
-        <div className="discount-stat-card">
-          <div className="discount-stat-icon blue">
-            <Users size={20} />
-          </div>
-          <div>
-            <p>Total Redemptions</p>
-            <h2>{totalUsed.toLocaleString("en-IN")}</h2>
-          </div>
-        </div>
-      </div>
-
-      <section className="discounts-content">
-        <div className="discounts-toolbar">
-          <div className="discount-search">
-            <Search size={18} />
-            <input
-              type="text"
-              placeholder="Search by discount name or code..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
-
-          <select
-            className="discount-filter"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          >
-            <option value="All">All Discounts</option>
-            <option value="Active">Active</option>
-            <option value="Scheduled">Scheduled</option>
-            <option value="Expired">Expired</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-        </div>
-
-        <div className="discounts-table-heading">
-          <div>
-            <h3>All Discounts</h3>
-            <p>Manage your promotional campaigns</p>
-          </div>
-          <span>{filteredDiscounts.length} results</span>
-        </div>
-
-        <div className="discounts-table-wrap">
-          <table className="discounts-table">
+        <div className="reports-table-wrap">
+          <table className="reports-table">
             <thead>
               <tr>
-                <th>DISCOUNT</th>
-                <th>CODE</th>
-                <th>VALUE</th>
-                <th>APPLIES TO</th>
-                <th>VALIDITY</th>
-                <th>USAGE</th>
+                <th>PAYMENT ID</th>
+                <th>CUSTOMER</th>
+                <th>DATE</th>
+                <th>METHOD</th>
+                <th>AMOUNT</th>
                 <th>STATUS</th>
-                <th>ACTIONS</th>
               </tr>
             </thead>
-
             <tbody>
-              {filteredDiscounts.map((discount) => (
-                <tr key={discount.id}>
+              {transactions.map((transaction) => (
+                <tr key={transaction.id}>
+                  <td><strong>{transaction.id}</strong></td>
+                  <td>{transaction.customer}</td>
+                  <td>{transaction.date}</td>
+                  <td>{transaction.method}</td>
+                  <td><strong>{money(transaction.amount)}</strong></td>
                   <td>
-                    <div className="discount-name-cell">
-                      <div className="discount-row-icon">
-                        {discount.type === "Percentage" ? (
-                          <Percent size={17} />
-                        ) : (
-                          <IndianRupee size={17} />
-                        )}
-                      </div>
-                      <div>
-                        <strong>{discount.name}</strong>
-                        <small>
-                          Min. purchase: {formatMoney(discount.minPurchase)}
-                        </small>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td>
-                    <span className="discount-code">{discount.code}</span>
-                  </td>
-
-                  <td>
-                    <strong>
-                      {discount.type === "Percentage"
-                        ? `${discount.value}%`
-                        : formatMoney(discount.value)}
-                    </strong>
-                    <small className="discount-value-type">
-                      {discount.type}
-                    </small>
-                  </td>
-
-                  <td>{discount.appliesTo}</td>
-
-                  <td>
-                    <div className="discount-date-cell">
-                      <CalendarDays size={15} />
-                      <span>
-                        {formatDate(discount.startDate)}
-                        <small>to {formatDate(discount.endDate)}</small>
-                      </span>
-                    </div>
-                  </td>
-
-                  <td>
-                    <div className="discount-usage">
-                      <strong>
-                        {discount.usedCount} / {discount.usageLimit}
-                      </strong>
-                      <div className="discount-progress">
-                        <span
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              (discount.usedCount / discount.usageLimit) * 100
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </td>
-
-                  <td>
-                    <span
-                      className={`discount-status ${discount.status.toLowerCase()}`}
-                    >
-                      {discount.status === "Active" && (
-                        <CheckCircle2 size={13} />
-                      )}
-                      {discount.status === "Scheduled" && (
-                        <Clock size={13} />
-                      )}
-                      {(discount.status === "Expired" ||
-                        discount.status === "Inactive") && <Ban size={13} />}
-                      {discount.status}
+                    <span className={`reports-transaction-status ${transaction.status.toLowerCase()}`}>
+                      {transaction.status}
                     </span>
-                  </td>
-
-                  <td>
-                    <div className="discount-actions">
-                      <button
-                        title="Edit discount"
-                        onClick={() => openEditModal(discount)}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        title={
-                          discount.status === "Inactive"
-                            ? "Activate discount"
-                            : "Deactivate discount"
-                        }
-                        onClick={() => toggleStatus(discount.id)}
-                      >
-                        {discount.status === "Inactive" ? (
-                          <CheckCircle2 size={16} />
-                        ) : (
-                          <Ban size={16} />
-                        )}
-                      </button>
-                      <button
-                        title="Delete discount"
-                        className="delete"
-                        onClick={() => deleteDiscount(discount.id)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))}
-
-              {filteredDiscounts.length === 0 && (
-                <tr>
-                  <td colSpan={8}>
-                    <div className="discount-empty">
-                      <Tag size={28} />
-                      <strong>No discounts found</strong>
-                      <span>Try another search or create a new discount.</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
-
-        <p className="discount-demo-note">
-          Demo mode: discount data is stored in component state and resets
-          when the page is refreshed. Connect Supabase for permanent storage.
-        </p>
       </section>
 
-      {showModal && (
-        <div
-          className="discount-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setShowModal(false);
-            }
-          }}
-        >
-          <div
-            className="discount-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="discount-modal-title"
-          >
-            <div className="discount-modal-header">
-              <div>
-                <p className="discounts-eyebrow">
-                  PROMOTIONAL CAMPAIGN
-                </p>
-                <h2 id="discount-modal-title">
-                  {editingId ? "Edit Discount" : "Create Discount"}
-                </h2>
-              </div>
-              <button
-                className="discount-close-btn"
-                onClick={() => setShowModal(false)}
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div className="discount-form-grid">
-                <label>
-                  Discount Name *
-                  <input
-                    value={form.name}
-                    onChange={(event) =>
-                      setForm({ ...form, name: event.target.value })
-                    }
-                    placeholder="e.g. Welcome Offer"
-                    required
-                  />
-                </label>
-
-                <label>
-                  Discount Code *
-                  <input
-                    value={form.code}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        code: event.target.value.toUpperCase(),
-                      })
-                    }
-                    placeholder="e.g. WELCOME20"
-                    required
-                  />
-                </label>
-
-                <label>
-                  Discount Type *
-                  <select
-                    value={form.type}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        type: event.target.value as DiscountType,
-                      })
-                    }
-                  >
-                    <option value="Percentage">Percentage (%)</option>
-                    <option value="Fixed">Fixed Amount (₹)</option>
-                  </select>
-                </label>
-
-                <label>
-                  Discount Value *
-                  <input
-                    type="number"
-                    min="0.01"
-                    max={form.type === "Percentage" ? 100 : undefined}
-                    step="0.01"
-                    value={form.value}
-                    onChange={(event) =>
-                      setForm({ ...form, value: event.target.value })
-                    }
-                    placeholder={
-                      form.type === "Percentage" ? "e.g. 20" : "e.g. 500"
-                    }
-                    required
-                  />
-                </label>
-
-                <label>
-                  Minimum Purchase (₹)
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.minPurchase}
-                    onChange={(event) =>
-                      setForm({ ...form, minPurchase: event.target.value })
-                    }
-                  />
-                </label>
-
-                <label>
-                  Minimum Quantity
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.minQuantity}
-                    onChange={(event) =>
-                      setForm({ ...form, minQuantity: event.target.value })
-                    }
-                    required
-                  />
-                </label>
-
-                <label>
-                  Start Date *
-                  <input
-                    type="date"
-                    value={form.startDate}
-                    onChange={(event) =>
-                      setForm({ ...form, startDate: event.target.value })
-                    }
-                    required
-                  />
-                </label>
-
-                <label>
-                  End Date *
-                  <input
-                    type="date"
-                    min={form.startDate || undefined}
-                    value={form.endDate}
-                    onChange={(event) =>
-                      setForm({ ...form, endDate: event.target.value })
-                    }
-                    required
-                  />
-                </label>
-
-                <label>
-                  Usage Limit *
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.usageLimit}
-                    onChange={(event) =>
-                      setForm({ ...form, usageLimit: event.target.value })
-                    }
-                    placeholder="e.g. 100"
-                    required
-                  />
-                </label>
-
-                <label>
-                  Applies To *
-                  <select
-                    value={form.appliesTo}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        appliesTo: event.target.value as AppliesTo,
-                      })
-                    }
-                  >
-                    <option value="Both">Products & Subscriptions</option>
-                    <option value="Products">Products only</option>
-                    <option value="Subscriptions">Subscriptions only</option>
-                  </select>
-                </label>
-              </div>
-
-              {error && <p className="discount-form-error">{error}</p>}
-
-              <div className="discount-modal-actions">
-                <button
-                  type="button"
-                  className="discount-cancel-btn"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="discount-primary-btn">
-                  {editingId ? "Save Changes" : "Create Discount"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <p className="reports-demo-note">
+        Demo mode: these reports use sample data. Connect Supabase to display
+        real-time figures from your subscriptions, invoices, and payments.
+      </p>
     </div>
   );
 }
