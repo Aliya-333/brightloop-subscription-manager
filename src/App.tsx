@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Products from "./Products";
 import Plans from "./Plans";
+import Subscriptions from "./Subscriptions";
+import Invoices from "./Invoices";
+import Payments from "./Payments";
 
 import {
   LayoutDashboard,
@@ -488,6 +491,12 @@ function App() {
   <Products />
 ) : activePage === "Plans" ? (
   <Plans />
+) : activePage === "Subscriptions" ? (
+  <Subscriptions />
+) : activePage === "Invoices" ? (
+  <Invoices />  
+  ) : activePage === "Payments" ? (
+  <Payments />
 ) : (
           /* OTHER PAGES */
           <div className="dashboard-content">

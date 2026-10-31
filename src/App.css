@@ -17,6 +17,9 @@
 
 /* SIDEBAR */
 
+
+/* SIDEBAR */
+
 .sidebar {
   width: 245px;
   min-width: 245px;
@@ -65,12 +68,18 @@
   display: flex;
   align-items: center;
   gap: 13px;
+  width: 100%;
   padding: 12px 13px;
+  border: none;
   border-radius: 9px;
+  background: transparent;
+  text-align: left;
   text-decoration: none;
   color: #d4d9ed;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
+  cursor: pointer;
   transition: .2s ease;
 }
 
@@ -85,12 +94,14 @@
   box-shadow: 0 4px 14px rgba(40, 80, 245, .25);
 }
 
+/* SETTINGS, TEAM AND HELP */
+
 .sidebar-bottom {
-  margin-top: auto;
-  padding-top: 28px;
+  margin-top: 22px;
+  padding-top: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 7px;
 }
 
 .profile-card {
@@ -128,6 +139,9 @@
   font-size: 10px;
   color: #a9b2d0;
 }
+
+/* MAIN CONTENT */
+
 
 /* MAIN CONTENT */
 
