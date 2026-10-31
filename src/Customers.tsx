@@ -15,6 +15,7 @@ import {
   MapPin,
 } from "lucide-react";
 import "./Customers.css";
+import { useTable } from "./lib/useTable";
 
 type Customer = {
   id: number;
@@ -26,59 +27,6 @@ type Customer = {
   joined: string;
   status: "Active" | "Inactive";
 };
-
-const initialCustomers: Customer[] = [
-  {
-    id: 1,
-    name: "Aarav Menon",
-    email: "aarav@example.com",
-    phone: "+91 98765 43210",
-    company: "Aarav Technologies",
-    address: "Kochi, Kerala",
-    joined: "2026-09-12",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Diya Nair",
-    email: "diya@example.com",
-    phone: "+91 98765 12345",
-    company: "Nova Solutions",
-    address: "Kozhikode, Kerala",
-    joined: "2026-09-18",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Rohan Thomas",
-    email: "rohan@example.com",
-    phone: "+91 91234 56789",
-    company: "Pixel Studios",
-    address: "Thrissur, Kerala",
-    joined: "2026-09-22",
-    status: "Inactive",
-  },
-  {
-    id: 4,
-    name: "Ananya Joseph",
-    email: "ananya@example.com",
-    phone: "+91 99887 66554",
-    company: "CloudNine",
-    address: "Ernakulam, Kerala",
-    joined: "2026-10-02",
-    status: "Active",
-  },
-  {
-    id: 5,
-    name: "Arjun Kumar",
-    email: "arjun@example.com",
-    phone: "+91 98765 87654",
-    company: "TechBridge",
-    address: "Kannur, Kerala",
-    joined: "2026-10-10",
-    status: "Inactive",
-  },
-];
 
 type CustomerForm = Omit<Customer, "id">;
 
@@ -93,8 +41,8 @@ const emptyForm: CustomerForm = {
 };
 
 function Customers() {
-  const [customers, setCustomers] =
-    useState<Customer[]>(initialCustomers);
+  const { rows: customers, insert, update, remove, error: loadError } =
+    useTable<Customer>("customers");
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
@@ -157,7 +105,7 @@ function Customers() {
     setShowModal(true);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const emailExists = customers.some(
@@ -171,32 +119,31 @@ function Customers() {
       return;
     }
 
-    if (editingCustomer) {
-      setCustomers((previous) =>
-        previous.map((customer) =>
-          customer.id === editingCustomer.id
-            ? { ...form, id: editingCustomer.id }
-            : customer
-        )
-      );
-    } else {
-      const newCustomer: Customer = {
-        ...form,
-        id: Date.now(),
-      };
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      email: form.email.trim(),
+    };
+    const result = editingCustomer
+      ? await update(editingCustomer.id, payload)
+      : await insert(payload);
 
-      setCustomers((previous) => [newCustomer, ...previous]);
+    if (result.error) {
+      alert(result.error);
+      return;
     }
 
     setShowModal(false);
     setEditingCustomer(null);
   };
 
-  const deleteCustomer = (id: number) => {
+  const deleteCustomer = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this customer?")) {
-      setCustomers((previous) =>
-        previous.filter((customer) => customer.id !== id)
-      );
+      const { error } = await remove(id);
+      if (error) {
+        alert(error);
+        return;
+      }
 
       if (selectedCustomer?.id === id) {
         setSelectedCustomer(null);
@@ -204,17 +151,15 @@ function Customers() {
     }
   };
 
-  const toggleStatus = (customer: Customer) => {
+  const toggleStatus = async (customer: Customer) => {
     const newStatus =
       customer.status === "Active" ? "Inactive" : "Active";
 
-    setCustomers((previous) =>
-      previous.map((item) =>
-        item.id === customer.id
-          ? { ...item, status: newStatus }
-          : item
-      )
-    );
+    const { error } = await update(customer.id, { status: newStatus });
+    if (error) {
+      alert(error);
+      return;
+    }
 
     if (selectedCustomer?.id === customer.id) {
       setSelectedCustomer({ ...customer, status: newStatus });
@@ -231,6 +176,7 @@ function Customers() {
 
   return (
     <div className="Customers-page">
+      {loadError && <p role="alert" style={{ color: "#b91c1c" }}>{loadError}</p>}
       {/* Header */}
       <div className="Customers-header">
         <div>
@@ -409,11 +355,6 @@ function Customers() {
           </table>
         </div>
 
-        <div className="Customer-demo-note">
-          <span>ⓘ</span>
-          Customer records currently use local React state.
-          Connect Supabase to store them permanently.
-        </div>
       </div>
 
       {/* Add / Edit Modal */}

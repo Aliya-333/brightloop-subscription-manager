@@ -5,6 +5,7 @@ import {
   Pencil, Trash2, X, TrendingUp, Filter,
 } from "lucide-react";
 import "./Products.css";
+import { useTable } from "./lib/useTable";
 
 type Product = {
   id: number;
@@ -18,27 +19,6 @@ type Product = {
   notes: string;
   active: boolean;
 };
-
-const initialProducts: Product[] = [
-  {
-    id: 1, name: "Odoo Standard", type: "Service",
-    category: "Software", salesPrice: 2000, costPrice: 800,
-    variant: "Standard", extraPrice: 0,
-    notes: "Standard subscription package", active: true,
-  },
-  {
-    id: 2, name: "Odoo Premium", type: "Service",
-    category: "Software", salesPrice: 3500, costPrice: 1500,
-    variant: "Premium", extraPrice: 560,
-    notes: "Premium features and support", active: true,
-  },
-  {
-    id: 3, name: "Cloud Storage", type: "Digital",
-    category: "Cloud", salesPrice: 999, costPrice: 350,
-    variant: "100 GB", extraPrice: 0,
-    notes: "Cloud storage subscription", active: true,
-  },
-];
 
 const emptyForm = {
   name: "",
@@ -60,7 +40,8 @@ function money(value: number) {
 }
 
 export default function Products() {
-  const [products, setProducts] = useState(initialProducts);
+  const { rows: products, insert, update, remove, error: loadError } =
+    useTable<Product>("products");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
@@ -117,7 +98,7 @@ export default function Products() {
     setShowForm(true);
   }
 
-  function saveProduct(event: React.FormEvent<HTMLFormElement>) {
+  async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const salesPrice = Number(form.salesPrice);
@@ -140,12 +121,11 @@ export default function Products() {
     }
 
     if (costPrice > salesPrice) {
-      setError("Cost price cannot exceed sales price in this demo.");
+      setError("Cost price cannot exceed sales price.");
       return;
     }
 
-    const product: Product = {
-      id: editingId ?? Date.now(),
+    const product = {
       name: form.name.trim(),
       type: form.type,
       category: form.category,
@@ -159,12 +139,14 @@ export default function Products() {
         : true,
     };
 
-    if (editingId !== null) {
-      setProducts((current) =>
-        current.map((p) => p.id === editingId ? product : p)
-      );
-    } else {
-      setProducts((current) => [product, ...current]);
+    const result =
+      editingId !== null
+        ? await update(editingId, product)
+        : await insert(product);
+
+    if (result.error) {
+      setError(result.error);
+      return;
     }
 
     setShowForm(false);
@@ -173,22 +155,22 @@ export default function Products() {
     setError("");
   }
 
-  function deleteProduct(id: number) {
+  async function deleteProduct(id: number) {
     const confirmed = window.confirm(
       "Delete this product from the catalogue?"
     );
 
     if (confirmed) {
-      setProducts((current) => current.filter((p) => p.id !== id));
+      const { error } = await remove(id);
+      if (error) alert(error);
     }
   }
 
-  function toggleStatus(id: number) {
-    setProducts((current) =>
-      current.map((p) =>
-        p.id === id ? { ...p, active: !p.active } : p
-      )
-    );
+  async function toggleStatus(id: number) {
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+    const { error } = await update(id, { active: !product.active });
+    if (error) alert(error);
   }
 
   return (
@@ -204,6 +186,8 @@ export default function Products() {
           <Plus size={18} /> Add Product
         </button>
       </section>
+
+      {loadError && <p className="products-demo-note" role="alert">{loadError}</p>}
 
       <section className="product-metrics">
         <article className="product-metric">
@@ -346,10 +330,6 @@ export default function Products() {
         </div>
       </section>
 
-      <p className="products-demo-note">
-        Demo catalogue · Data is currently stored in page state and will reset
-        when the page reloads. Supabase persistence comes next.
-      </p>
 
       {showForm && (
         <div className="product-modal-backdrop" onMouseDown={(e) => {

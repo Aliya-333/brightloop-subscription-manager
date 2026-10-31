@@ -15,12 +15,15 @@ import {
   UserX,
 } from "lucide-react";
 import "./Team.css";
+import { useTable } from "./lib/useTable";
+import { supabase } from "./lib/supabase";
+import { useAuth } from "./auth/AuthProvider";
 
 type TeamRole = "Admin" | "Staff" | "Viewer";
 type TeamStatus = "Active" | "Inactive";
 
 type TeamMember = {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: TeamRole;
@@ -28,40 +31,14 @@ type TeamMember = {
   joined: string;
 };
 
-const initialMembers: TeamMember[] = [
-  {
-    id: 1,
-    name: "Admin User",
-    email: "admin@brightloop.com",
-    role: "Admin",
-    status: "Active",
-    joined: "01 Oct 2026",
-  },
-  {
-    id: 2,
-    name: "Alex Johnson",
-    email: "alex@brightloop.com",
-    role: "Staff",
-    status: "Active",
-    joined: "05 Oct 2026",
-  },
-  {
-    id: 3,
-    name: "Sarah Williams",
-    email: "sarah@brightloop.com",
-    role: "Staff",
-    status: "Active",
-    joined: "10 Oct 2026",
-  },
-  {
-    id: 4,
-    name: "David Miller",
-    email: "david@brightloop.com",
-    role: "Viewer",
-    status: "Inactive",
-    joined: "15 Oct 2026",
-  },
-];
+function formatJoined(date: string) {
+  if (!date) return "—";
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 const emptyForm = {
   name: "",
@@ -70,14 +47,17 @@ const emptyForm = {
 };
 
 function Team() {
-  const [members, setMembers] = useState<TeamMember[]>(initialMembers);
+  const { isAdmin, profile } = useAuth();
+  const { rows: members, update, reload, error: loadError } =
+    useTable<TeamMember>("profiles", "joined");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [menuId, setMenuId] = useState<number | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
@@ -124,80 +104,74 @@ function Team() {
     setMenuId(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    const normalizedEmail = form.email.trim().toLowerCase();
-
-    const emailExists = members.some(
-      (member) =>
-        member.email.toLowerCase() === normalizedEmail &&
-        member.id !== editingId
-    );
-
-    if (emailExists) {
-      alert("A team member with this email already exists.");
+    if (!isAdmin) {
+      alert("Only administrators can manage the team.");
       return;
     }
 
-    if (editingId !== null) {
-      setMembers((previous) =>
-        previous.map((member) =>
-          member.id === editingId
-            ? {
-                ...member,
-                name: form.name.trim(),
-                email: normalizedEmail,
-                role: member.id === 1 ? "Admin" : form.role,
-              }
-            : member
-        )
-      );
-    } else {
-      const newMember: TeamMember = {
-        id: Date.now(),
-        name: form.name.trim(),
-        email: normalizedEmail,
-        role: form.role,
-        status: "Active",
-        joined: new Date().toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
-      };
+    const normalizedEmail = form.email.trim().toLowerCase();
+    setBusy(true);
 
-      setMembers((previous) => [...previous, newMember]);
+    if (editingId !== null) {
+      // email is owned by the sign-in account and cannot be edited here
+      const { error } = await update(editingId, {
+        name: form.name.trim(),
+        role: form.role,
+      });
+      setBusy(false);
+      if (error) {
+        alert(error);
+        return;
+      }
+    } else {
+      const emailExists = members.some(
+        (member) => member.email.toLowerCase() === normalizedEmail
+      );
+      if (emailExists) {
+        setBusy(false);
+        alert("A team member with this email already exists.");
+        return;
+      }
+
+      // Inviting needs the service-role key, so it runs in a server-side Edge Function
+      const { data, error } = await supabase.functions.invoke("manage-member", {
+        body: {
+          action: "invite",
+          email: normalizedEmail,
+          name: form.name.trim(),
+          role: form.role,
+        },
+      });
+      setBusy(false);
+      const serverError =
+        (data as { error?: string } | null)?.error ?? error?.message;
+      if (serverError) {
+        alert(serverError);
+        return;
+      }
+      await reload();
     }
 
     setModalOpen(false);
     setForm(emptyForm);
   };
 
-  const toggleStatus = (id: number) => {
-    if (id === 1) {
-      alert("The primary administrator cannot be deactivated.");
-      return;
-    }
+  const toggleStatus = async (id: string) => {
+    const member = members.find((item) => item.id === id);
+    if (!member) return;
 
-    setMembers((previous) =>
-      previous.map((member) =>
-        member.id === id
-          ? {
-              ...member,
-              status:
-                member.status === "Active" ? "Inactive" : "Active",
-            }
-          : member
-      )
-    );
-
+    const { error } = await update(id, {
+      status: member.status === "Active" ? "Inactive" : "Active",
+    });
+    if (error) alert(error);
     setMenuId(null);
   };
 
-  const deleteMember = (id: number) => {
-    if (id === 1) {
-      alert("The primary administrator cannot be removed.");
+  const deleteMember = async (id: string) => {
+    if (id === profile?.id) {
+      alert("You cannot remove your own account.");
       return;
     }
 
@@ -207,9 +181,13 @@ function Team() {
     if (
       window.confirm(`Are you sure you want to remove ${member.name}?`)
     ) {
-      setMembers((previous) =>
-        previous.filter((item) => item.id !== id)
-      );
+      const { data, error } = await supabase.functions.invoke("manage-member", {
+        body: { action: "remove", id },
+      });
+      const serverError =
+        (data as { error?: string } | null)?.error ?? error?.message;
+      if (serverError) alert(serverError);
+      else await reload();
     }
 
     setMenuId(null);
@@ -224,11 +202,15 @@ function Team() {
           <p>Manage your team, roles and access permissions.</p>
         </div>
 
+        {isAdmin && (
         <button className="team-primary-btn" onClick={openAddModal}>
           <UserPlus size={17} />
           Add Team Member
         </button>
+        )}
       </div>
+
+      {loadError && <p role="alert" style={{ color: "#b91c1c" }}>{loadError}</p>}
 
       <section className="team-stats">
         <article className="team-stat-card">
@@ -363,7 +345,7 @@ function Team() {
                     </span>
                   </td>
 
-                  <td className="team-date">{member.joined}</td>
+                  <td className="team-date">{formatJoined(member.joined)}</td>
 
                   <td>
                     <div className="team-action-wrap">
@@ -486,6 +468,7 @@ function Team() {
                     setForm({ ...form, email: e.target.value })
                   }
                   placeholder="name@company.com"
+                  disabled={editingId !== null}
                   required
                 />
               </label>
@@ -500,7 +483,7 @@ function Team() {
                       role: e.target.value as TeamRole,
                     })
                   }
-                  disabled={editingId === 1}
+                  disabled={editingId === profile?.id}
                 >
                   <option value="Staff">Staff</option>
                   <option value="Viewer">Viewer</option>
@@ -521,9 +504,9 @@ function Team() {
                 Cancel
               </button>
 
-              <button type="submit" className="team-primary-btn">
+              <button type="submit" className="team-primary-btn" disabled={busy}>
                 <CheckCircle2 size={16} />
-                {editingId ? "Save Changes" : "Add Member"}
+                {editingId ? "Save Changes" : "Send Invite"}
               </button>
             </div>
           </form>

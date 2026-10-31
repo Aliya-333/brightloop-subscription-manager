@@ -14,6 +14,7 @@ import {
   Download,
 } from "lucide-react";
 import "./Invoices.css";
+import { useTable } from "./lib/useTable";
 
 type InvoiceStatus = "Draft" | "Confirmed" | "Paid" | "Overdue";
 
@@ -27,59 +28,6 @@ type Invoice = {
   amount: number;
   status: InvoiceStatus;
 };
-
-const initialInvoices: Invoice[] = [
-  {
-    id: "INV-2026-001",
-    customer: "Aarav Technologies",
-    email: "aarav@example.com",
-    subscription: "SUB-2026-001",
-    issueDate: "2026-10-01",
-    dueDate: "2026-10-15",
-    amount: 4999,
-    status: "Paid",
-  },
-  {
-    id: "INV-2026-002",
-    customer: "Nova Solutions",
-    email: "nova@example.com",
-    subscription: "SUB-2026-002",
-    issueDate: "2026-10-05",
-    dueDate: "2026-11-05",
-    amount: 499,
-    status: "Confirmed",
-  },
-  {
-    id: "INV-2026-003",
-    customer: "PixelCraft Studio",
-    email: "pixel@example.com",
-    subscription: "SUB-2026-003",
-    issueDate: "2026-10-10",
-    dueDate: "2026-10-20",
-    amount: 199,
-    status: "Overdue",
-  },
-  {
-    id: "INV-2026-004",
-    customer: "Vertex Systems",
-    email: "vertex@example.com",
-    subscription: "SUB-2026-004",
-    issueDate: "2026-10-12",
-    dueDate: "2026-11-12",
-    amount: 4999,
-    status: "Draft",
-  },
-  {
-    id: "INV-2026-005",
-    customer: "Bluewave Digital",
-    email: "bluewave@example.com",
-    subscription: "SUB-2026-005",
-    issueDate: "2026-10-15",
-    dueDate: "2026-10-25",
-    amount: 499,
-    status: "Paid",
-  },
-];
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -96,7 +44,8 @@ const formatDate = (date: string) =>
   });
 
 function Invoices() {
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const { rows: invoices, insert, update, remove, error: loadError } =
+    useTable<Invoice>("invoices", "created_at");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
@@ -179,7 +128,7 @@ function Invoices() {
     setShowModal(true);
   };
 
-  const saveInvoice = (event: FormEvent<HTMLFormElement>) => {
+  const saveInvoice = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const amount = Number(form.amount);
@@ -211,44 +160,29 @@ function Invoices() {
       return;
     }
 
-    if (editingInvoice) {
-      setInvoices((previous) =>
-        previous.map((invoice) =>
-          invoice.id === editingInvoice.id
-            ? { ...invoice, ...form, amount }
-            : invoice
-        )
-      );
-    } else {
-      const newInvoice: Invoice = {
-        id: `INV-2026-${String(
-          Math.max(0, ...invoices.map((invoice) => Number(invoice.id.split("-")[2]))) + 1
-        ).padStart(3, "0")}`,
-        ...form,
-        amount,
-        status: "Draft",
-      };
+    // the INV-YYYY-NNN code is assigned by the database
+    const result = editingInvoice
+      ? await update(editingInvoice.id, { ...form, amount })
+      : await insert({ ...form, amount, status: "Draft" });
 
-      setInvoices((previous) => [newInvoice, ...previous]);
+    if (result.error) {
+      setError(result.error);
+      return;
     }
 
     setShowModal(false);
     setError("");
   };
 
-  const updateStatus = (id: string, status: InvoiceStatus) => {
-    setInvoices((previous) =>
-      previous.map((invoice) =>
-        invoice.id === id ? { ...invoice, status } : invoice
-      )
-    );
+  const updateStatus = async (id: string, status: InvoiceStatus) => {
+    const { error } = await update(id, { status });
+    if (error) alert(error);
   };
 
-  const deleteInvoice = (id: string) => {
+  const deleteInvoice = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this invoice?")) {
-      setInvoices((previous) =>
-        previous.filter((invoice) => invoice.id !== id)
-      );
+      const { error } = await remove(id);
+      if (error) alert(error);
     }
   };
 
@@ -303,6 +237,8 @@ function Invoices() {
           Create Invoice
         </button>
       </div>
+
+      {loadError && <p role="alert" style={{ color: "#b91c1c" }}>{loadError}</p>}
 
       <div className="invoice-metrics">
         <div className="invoice-metric">
@@ -473,9 +409,6 @@ function Invoices() {
           </table>
         </div>
 
-        <p className="invoices-demo-note">
-          Demo data is currently stored in local component state.
-        </p>
       </section>
 
       {showModal && (

@@ -1,5 +1,8 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "./auth/AuthProvider";
+import Login from "./auth/Login";
+import { supabase } from "./lib/supabase";
 
 import Products from "./Products";
 import Plans from "./Plans";
@@ -35,9 +38,11 @@ import {
   RefreshCw,
   Tag,
   Clock,
+  LogOut,
 } from "lucide-react";
 
 import "./App.css";
+import "./auth/Login.css";
 
 const navigation = [
   { label: "Dashboard", page: "Dashboard", icon: LayoutDashboard },
@@ -113,8 +118,36 @@ const activities = [
   },
 ];
 
-function App() {
+function Shell() {
+  const { profile, signOut } = useAuth();
+  const displayName = profile?.name || profile?.email || "User";
+  const initial = displayName.charAt(0).toUpperCase();
   const [activePage, setActivePage] = useState("Dashboard");
+  const [live, setLive] = useState<string[] | null>(null);
+
+  // Live dashboard figures (RLS limits this to signed-in active members)
+  useEffect(() => {
+    if (activePage !== "Dashboard") return;
+    let cancelled = false;
+    (async () => {
+      const [subs, inv, pay] = await Promise.all([
+        supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "Active"),
+        supabase.from("invoices").select("amount,status"),
+        supabase.from("payments").select("amount,status").eq("status", "Completed"),
+      ]);
+      if (cancelled) return;
+      const money = (n: number) => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+      const sum = (rows: { amount: number }[] | null) => (rows ?? []).reduce((a, r) => a + Number(r.amount), 0);
+      const invoices = (inv.data ?? []) as { amount: number; status: string }[];
+      setLive([
+        String(subs.count ?? 0),
+        money(sum(invoices.filter((r) => r.status === "Paid"))),
+        money(sum(pay.data as { amount: number }[] | null)),
+        String(invoices.filter((r) => r.status === "Overdue").length),
+      ]);
+    })();
+    return () => { cancelled = true; };
+  }, [activePage]);
 
   return (
     <div className="app-shell">
@@ -178,11 +211,15 @@ function App() {
           </button>
 
           <div className="profile-card">
-            <div className="profile-avatar">A</div>
+            <div className="profile-avatar">{initial}</div>
             <div className="profile-info">
-              <strong>Admin User</strong>
-              <span>Administrator</span>
+              <strong>{displayName}</strong>
+              <span>{profile?.role}</span>
             </div>
+            <button className="icon-button" aria-label="Sign out" title="Sign out"
+              onClick={() => void signOut()}>
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </aside>
@@ -214,7 +251,7 @@ function App() {
               <i className="notification-dot" />
             </button>
 
-            <div className="top-avatar">A</div>
+            <div className="top-avatar">{initial}</div>
           </div>
         </header>
 
@@ -227,7 +264,7 @@ function App() {
                 <div className="welcome-label">
                   SATURDAY, OCTOBER 31, 2026
                 </div>
-                <h1>Welcome back, Admin!</h1>
+                <h1>Welcome back, {displayName.split(" ")[0]}!</h1>
                 <p>
                   Here's what's happening with your subscriptions today.
                 </p>
@@ -241,7 +278,7 @@ function App() {
 
             {/* STATISTICS */}
             <section className="stats-grid">
-              {stats.map((stat) => {
+              {stats.map((stat, statIndex) => {
                 const Icon = stat.icon;
 
                 return (
@@ -252,11 +289,8 @@ function App() {
                     <div className="stat-heading">
                       <div>
                         <span>{stat.label}</span>
-                        <h2>{stat.value}</h2>
-                        <p className="stat-growth">
-                          {stat.change}{" "}
-                          <span>compared to last month</span>
-                        </p>
+                        <h2>{live ? live[statIndex] : "…"}</h2>
+
                       </div>
 
                       <div className="stat-icon">
@@ -541,6 +575,30 @@ function App() {
       </main>
     </div>
   );
+}
+
+function App() {
+  const { session, profile, loading, signOut } = useAuth();
+
+  if (loading) return <div className="login-wrap">Loading…</div>;
+  if (!session) return <Login />;
+
+  // Signed in but not (yet) authorised: new accounts start Inactive until an admin approves them.
+  if (!profile || profile.status !== "Active") {
+    return (
+      <div className="login-wrap">
+        <div className="login-card">
+          <h1>Access pending</h1>
+          <p>
+            Your account ({session.user.email}) is not active yet. Ask a Brightloop
+            administrator to activate it.
+          </p>
+          <button className="login-link" onClick={() => void signOut()}>Sign out</button>
+        </div>
+      </div>
+    );
+  }
+  return <Shell />;
 }
 
 export default App;

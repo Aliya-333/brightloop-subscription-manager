@@ -1,5 +1,8 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
+import { useAuth } from "./auth/AuthProvider";
+import { errorMessage } from "./lib/useTable";
 import type React from "react";
 
 import {
@@ -28,6 +31,8 @@ type SettingsTab =
   | "Security";
 
 function Settings() {
+  const { profile: me, isAdmin, refreshProfile } = useAuth();
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("General");
   const [saved, setSaved] = useState(false);
 
@@ -39,10 +44,10 @@ function Settings() {
   });
 
   const [profile, setProfile] = useState({
-    name: "Admin User",
-    email: "admin@brightloop.com",
+    name: me?.name ?? "",
+    email: me?.email ?? "",
     phone: "",
-    role: "Administrator",
+    role: me?.role ?? "",
   });
 
   const [preferences, setPreferences] = useState({
@@ -67,6 +72,21 @@ function Settings() {
     twoFactor: false,
   });
 
+  useEffect(() => {
+    (async () => {
+      const [ws, own] = await Promise.all([
+        supabase.from("workspace_settings").select("general,preferences,notifications").maybeSingle(),
+        me ? supabase.from("profiles").select("phone").eq("id", me.id).maybeSingle() : null,
+      ]);
+      if (ws.data) {
+        setGeneral((g) => ({ ...g, ...ws.data.general }));
+        setPreferences((p) => ({ ...p, ...ws.data.preferences }));
+        setNotifications((n) => ({ ...n, ...ws.data.notifications }));
+      }
+      if (own?.data) setProfile((p) => ({ ...p, phone: own.data.phone ?? "" }));
+    })();
+  }, [me]);
+
   const tabs = [
     { name: "General" as const, icon: Building2 },
     { name: "Profile" as const, icon: User },
@@ -75,35 +95,55 @@ function Settings() {
     { name: "Security" as const, icon: ShieldCheck },
   ];
 
-  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
+  const fail = (message: string) => {
+    setSaving(false);
+    alert(message);
+  };
+
+  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSaving(true);
 
     if (activeTab === "Security") {
-      if (
-        security.newPassword &&
-        security.newPassword !== security.confirmPassword
-      ) {
-        alert("New password and confirm password do not match.");
-        return;
-      }
+      if (!security.newPassword) return fail("Enter a new password.");
+      if (security.newPassword !== security.confirmPassword)
+        return fail("New password and confirm password do not match.");
+      if (security.newPassword.length < 10)
+        return fail("New password must contain at least 10 characters.");
+      if (!security.currentPassword)
+        return fail("Enter your current password first.");
 
-      if (
-        security.newPassword &&
-        security.newPassword.length < 8
-      ) {
-        alert("New password must contain at least 8 characters.");
-        return;
-      }
+      // re-authenticate with the current password before allowing a change
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: me?.email ?? "",
+        password: security.currentPassword,
+      });
+      if (authError) return fail("Current password is incorrect.");
 
-      if (
-        security.newPassword &&
-        !security.currentPassword
-      ) {
-        alert("Enter your current password first.");
-        return;
-      }
+      const { error } = await supabase.auth.updateUser({
+        password: security.newPassword,
+      });
+      if (error) return fail(error.message);
+      setSecurity({ ...security, currentPassword: "", newPassword: "", confirmPassword: "" });
+    } else if (activeTab === "Profile") {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ name: profile.name.trim(), phone: profile.phone.trim() })
+        .eq("id", me?.id ?? "");
+      if (error) return fail(errorMessage(error));
+      await refreshProfile();
+    } else {
+      if (!isAdmin) return fail("Only administrators can change workspace settings.");
+      const { data, error } = await supabase
+        .from("workspace_settings")
+        .update({ general, preferences, notifications })
+        .eq("id", true)
+        .select();
+      if (error) return fail(errorMessage(error));
+      if (!data?.length) return fail("You don't have permission to do that.");
     }
 
+    setSaving(false);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2500);
   };
@@ -284,13 +324,8 @@ function Settings() {
                   <input
                     type="email"
                     value={profile.email}
-                    onChange={(e) =>
-                      setProfile({
-                        ...profile,
-                        email: e.target.value,
-                      })
-                    }
-                    required
+                    disabled
+                    readOnly
                   />
                 </label>
 
@@ -579,6 +614,8 @@ function Settings() {
                   type="button"
                   role="switch"
                   aria-checked={security.twoFactor}
+                  disabled
+                  title="Two-factor authentication is not available yet"
                   className={`toggle-switch ${
                     security.twoFactor ? "enabled" : ""
                   }`}
@@ -601,12 +638,12 @@ function Settings() {
               {saved && (
                 <>
                   <Check size={16} />
-                  Changes saved in this session
+                  Changes saved
                 </>
               )}
             </span>
 
-            <button type="submit" className="settings-save-button">
+            <button type="submit" className="settings-save-button" disabled={saving}>
               <Save size={17} />
               Save Changes
             </button>

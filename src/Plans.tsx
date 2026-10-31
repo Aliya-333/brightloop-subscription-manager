@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import "./Plans.css";
+import { useTable } from "./lib/useTable";
 
 type BillingCycle = "Daily" | "Weekly" | "Monthly" | "Yearly";
 
@@ -29,51 +30,6 @@ type Plan = {
   active: boolean;
 };
 
-const initialPlans: Plan[] = [
-  {
-    id: 1,
-    name: "Starter Monthly",
-    description: "Essential tools for individuals and small teams.",
-    price: 499,
-    cycle: "Monthly",
-    minQuantity: 1,
-    startDate: "2026-01-01",
-    endDate: "",
-    autoRenew: true,
-    allowPause: true,
-    earlyClosure: true,
-    active: true,
-  },
-  {
-    id: 2,
-    name: "Professional Yearly",
-    description: "Advanced features for growing businesses.",
-    price: 4999,
-    cycle: "Yearly",
-    minQuantity: 1,
-    startDate: "2026-01-01",
-    endDate: "",
-    autoRenew: true,
-    allowPause: false,
-    earlyClosure: true,
-    active: true,
-  },
-  {
-    id: 3,
-    name: "Cloud Weekly",
-    description: "Flexible weekly cloud storage subscription.",
-    price: 199,
-    cycle: "Weekly",
-    minQuantity: 2,
-    startDate: "2026-02-01",
-    endDate: "2027-02-01",
-    autoRenew: false,
-    allowPause: true,
-    earlyClosure: false,
-    active: false,
-  },
-];
-
 const emptyPlan: Omit<Plan, "id"> = {
   name: "",
   description: "",
@@ -89,7 +45,8 @@ const emptyPlan: Omit<Plan, "id"> = {
 };
 
 function Plans() {
-  const [plans, setPlans] = useState<Plan[]>(initialPlans);
+  const { rows: plans, insert, update, remove, error: loadError } =
+    useTable<Plan>("plans");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
@@ -122,12 +79,13 @@ function Plans() {
 
   function openEditForm(plan: Plan) {
     setEditingId(plan.id);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...planDetails } = plan;
     setForm({ ...planDetails });
     setShowForm(true);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!form.name.trim()) {
@@ -149,17 +107,19 @@ function Plans() {
       return;
     }
 
-    if (editingId !== null) {
-      setPlans((current) =>
-        current.map((plan) =>
-          plan.id === editingId ? { ...form, id: editingId } : plan
-        )
-      );
-    } else {
-      setPlans((current) => [
-        ...current,
-        { ...form, id: Date.now() },
-      ]);
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      description: form.description.trim(),
+    };
+    const result =
+      editingId !== null
+        ? await update(editingId, payload)
+        : await insert(payload);
+
+    if (result.error) {
+      alert(result.error);
+      return;
     }
 
     setShowForm(false);
@@ -167,18 +127,18 @@ function Plans() {
     setForm({ ...emptyPlan });
   }
 
-  function deletePlan(id: number) {
+  async function deletePlan(id: number) {
     if (window.confirm("Are you sure you want to delete this plan?")) {
-      setPlans((current) => current.filter((plan) => plan.id !== id));
+      const { error } = await remove(id);
+      if (error) alert(error);
     }
   }
 
-  function toggleStatus(id: number) {
-    setPlans((current) =>
-      current.map((plan) =>
-        plan.id === id ? { ...plan, active: !plan.active } : plan
-      )
-    );
+  async function toggleStatus(id: number) {
+    const plan = plans.find((p) => p.id === id);
+    if (!plan) return;
+    const { error } = await update(id, { active: !plan.active });
+    if (error) alert(error);
   }
 
   return (
@@ -195,6 +155,8 @@ function Plans() {
           Create Plan
         </button>
       </section>
+
+      {loadError && <p role="alert" style={{ color: "#b91c1c" }}>{loadError}</p>}
 
       <section className="plans-stats">
         <article className="plans-stat-card">

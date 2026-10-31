@@ -1,0 +1,17 @@
+# Used by the Supabase CLI (`supabase start` / `supabase db push`). The hosted project's
+# equivalents live in Dashboard → Authentication — see README "Backend setup".
+project_id = "tsvpicpgfxjxujzicfm"
+
+[auth]
+site_url = "http://localhost:5173"
+enable_signup = false              # invite-only: users are created by an Admin
+minimum_password_length = 10
+password_requirements = "lower_upper_letters_digits"
+
+[auth.email]
+enable_confirmations = true
+double_confirm_changes = true
+secure_password_change = true
+
+[functions.manage-member]
+verify_jwt = true

@@ -17,6 +17,7 @@ import {
   Eye,
 } from "lucide-react";
 import "./Subscriptions.css";
+import { useTable } from "./lib/useTable";
 
 type SubscriptionStatus = "Active" | "Pending" | "Paused" | "Closed";
 
@@ -32,69 +33,6 @@ type Subscription = {
   paymentTerms: string;
   status: SubscriptionStatus;
 };
-
-const initialSubscriptions: Subscription[] = [
-  {
-    id: "SUB-2026-001",
-    customer: "Aarav Technologies",
-    email: "aarav@example.com",
-    plan: "Professional",
-    amount: 4999,
-    cycle: "Yearly",
-    startDate: "2026-01-15",
-    endDate: "2027-01-14",
-    paymentTerms: "Due immediately",
-    status: "Active",
-  },
-  {
-    id: "SUB-2026-002",
-    customer: "Nova Solutions",
-    email: "nova@example.com",
-    plan: "Starter",
-    amount: 499,
-    cycle: "Monthly",
-    startDate: "2026-03-01",
-    endDate: "2026-11-01",
-    paymentTerms: "Net 15",
-    status: "Active",
-  },
-  {
-    id: "SUB-2026-003",
-    customer: "PixelCraft Studio",
-    email: "pixel@example.com",
-    plan: "Cloud Weekly",
-    amount: 199,
-    cycle: "Weekly",
-    startDate: "2026-10-20",
-    endDate: "2026-11-20",
-    paymentTerms: "Due immediately",
-    status: "Pending",
-  },
-  {
-    id: "SUB-2026-004",
-    customer: "Vertex Systems",
-    email: "vertex@example.com",
-    plan: "Professional",
-    amount: 4999,
-    cycle: "Yearly",
-    startDate: "2026-02-10",
-    endDate: "2027-02-09",
-    paymentTerms: "Net 30",
-    status: "Paused",
-  },
-  {
-    id: "SUB-2026-005",
-    customer: "Bluewave Digital",
-    email: "bluewave@example.com",
-    plan: "Starter",
-    amount: 499,
-    cycle: "Monthly",
-    startDate: "2025-08-01",
-    endDate: "2026-08-01",
-    paymentTerms: "Net 15",
-    status: "Closed",
-  },
-];
 
 const emptyForm = {
   customer: "",
@@ -126,7 +64,8 @@ function formatCurrency(amount: number) {
 }
 
 function Subscriptions() {
-  const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
+  const { rows: subscriptions, insert, update, remove, error: loadError } =
+    useTable<Subscription>("subscriptions", "created_at");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
@@ -194,7 +133,7 @@ function Subscriptions() {
     setForm((previous) => ({ ...previous, [field]: value }));
   };
 
-  const saveSubscription = (event: FormEvent<HTMLFormElement>) => {
+  const saveSubscription = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
 
@@ -237,24 +176,14 @@ function Subscriptions() {
       status: form.status,
     };
 
-    if (editingId) {
-      setSubscriptions((previous) =>
-        previous.map((subscription) =>
-          subscription.id === editingId
-            ? { ...subscription, ...subscriptionData }
-            : subscription
-        )
-      );
-    } else {
-      const nextNumber =
-        subscriptions.length + 1;
+    // the SUB-YYYY-NNN code is assigned by the database
+    const result = editingId
+      ? await update(editingId, subscriptionData)
+      : await insert(subscriptionData);
 
-      const newSubscription: Subscription = {
-        id: `SUB-2026-${String(nextNumber).padStart(3, "0")}`,
-        ...subscriptionData,
-      };
-
-      setSubscriptions((previous) => [newSubscription, ...previous]);
+    if (result.error) {
+      setError(result.error);
+      return;
     }
 
     setShowModal(false);
@@ -262,28 +191,22 @@ function Subscriptions() {
     setForm(emptyForm);
   };
 
-  const changeStatus = (
+  const changeStatus = async (
     id: string,
     status: SubscriptionStatus
   ) => {
-    setSubscriptions((previous) =>
-      previous.map((subscription) =>
-        subscription.id === id
-          ? { ...subscription, status }
-          : subscription
-      )
-    );
+    const { error } = await update(id, { status });
+    if (error) alert(error);
   };
 
-  const deleteSubscription = (id: string) => {
+  const deleteSubscription = async (id: string) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this subscription?"
     );
 
     if (confirmed) {
-      setSubscriptions((previous) =>
-        previous.filter((subscription) => subscription.id !== id)
-      );
+      const { error } = await remove(id);
+      if (error) alert(error);
     }
   };
 
@@ -308,6 +231,8 @@ function Subscriptions() {
           Create Subscription
         </button>
       </div>
+
+      {loadError && <p role="alert" style={{ color: "#b91c1c" }}>{loadError}</p>}
 
       <div className="subscription-metrics">
         <div className="subscription-metric">

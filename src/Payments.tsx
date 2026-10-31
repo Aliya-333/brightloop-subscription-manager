@@ -11,7 +11,8 @@ import {
   Eye,
   Trash2,
 } from "lucide-react";
-import "./payments.css";
+import "./Payments.css";
+import { useTable } from "./lib/useTable";
 
 type Payment = {
   id: number;
@@ -25,55 +26,9 @@ type Payment = {
   note: string;
 };
 
-const initialPayments: Payment[] = [
-  {
-    id: 1,
-    paymentId: "PAY-2026-001",
-    customer: "Aarav Technologies",
-    invoice: "INV-2026-001",
-    method: "UPI",
-    amount: 4999,
-    date: "2026-10-24",
-    status: "Completed",
-    note: "Monthly subscription payment",
-  },
-  {
-    id: 2,
-    paymentId: "PAY-2026-002",
-    customer: "Nova Solutions",
-    invoice: "INV-2026-002",
-    method: "Credit Card",
-    amount: 8999,
-    date: "2026-10-25",
-    status: "Pending",
-    note: "Annual plan payment",
-  },
-  {
-    id: 3,
-    paymentId: "PAY-2026-003",
-    customer: "Pixel Studios",
-    invoice: "INV-2026-003",
-    method: "Bank Transfer",
-    amount: 2499,
-    date: "2026-10-26",
-    status: "Completed",
-    note: "Subscription renewal",
-  },
-  {
-    id: 4,
-    paymentId: "PAY-2026-004",
-    customer: "CloudNine",
-    invoice: "INV-2026-004",
-    method: "UPI",
-    amount: 1499,
-    date: "2026-10-27",
-    status: "Failed",
-    note: "Payment attempt failed",
-  },
-];
-
 function Payments() {
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  const { rows: payments, insert, remove, error: loadError } =
+    useTable<Payment>("payments", "created_at");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
@@ -133,7 +88,7 @@ function Payments() {
     setShowModal(true);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const amount = Number(form.amount);
@@ -143,11 +98,8 @@ function Payments() {
       return;
     }
 
-    const newPayment: Payment = {
-      id: Date.now(),
-      paymentId: `PAY-${new Date().getFullYear()}-${String(
-        payments.length + 1
-      ).padStart(3, "0")}`,
+    // the PAY-YYYY-NNN code is assigned by the database
+    const { error } = await insert({
       customer: form.customer.trim(),
       invoice: form.invoice.trim(),
       method: form.method,
@@ -155,17 +107,20 @@ function Payments() {
       date: form.date,
       status: form.status,
       note: form.note.trim(),
-    };
+    });
 
-    setPayments((previous) => [newPayment, ...previous]);
+    if (error) {
+      alert(error);
+      return;
+    }
+
     setShowModal(false);
   };
 
-  const deletePayment = (id: number) => {
+  const deletePayment = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this payment?")) {
-      setPayments((previous) =>
-        previous.filter((payment) => payment.id !== id)
-      );
+      const { error } = await remove(id);
+      if (error) alert(error);
     }
   };
 
@@ -190,6 +145,8 @@ function Payments() {
           Record Payment
         </button>
       </div>
+
+      {loadError && <p role="alert" style={{ color: "#b91c1c" }}>{loadError}</p>}
 
       <div className="payment-stats">
         <div className="payment-stat-card">
@@ -355,11 +312,6 @@ function Payments() {
           </table>
         </div>
 
-        <div className="payment-demo-note">
-          <span>ⓘ</span>
-          Payment records are currently stored in local component state.
-          Connect Supabase to save them permanently.
-        </div>
       </div>
 
       {showModal && (

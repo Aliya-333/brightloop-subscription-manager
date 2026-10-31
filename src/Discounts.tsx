@@ -16,6 +16,7 @@ import {
   Ban,
 } from "lucide-react";
 import "./Discounts.css";
+import { useTable } from "./lib/useTable";
 
 type DiscountType = "Percentage" | "Fixed";
 type AppliesTo = "Products" | "Subscriptions" | "Both";
@@ -36,69 +37,6 @@ type Discount = {
   appliesTo: AppliesTo;
   status: DiscountStatus;
 };
-
-const initialDiscounts: Discount[] = [
-  {
-    id: 1,
-    code: "WELCOME20",
-    name: "Welcome Offer",
-    type: "Percentage",
-    value: 20,
-    minPurchase: 500,
-    minQuantity: 1,
-    startDate: "2026-01-01",
-    endDate: "2027-01-31",
-    usageLimit: 500,
-    usedCount: 125,
-    appliesTo: "Both",
-    status: "Active",
-  },
-  {
-    id: 2,
-    code: "SAVE500",
-    name: "Flat Savings",
-    type: "Fixed",
-    value: 500,
-    minPurchase: 2000,
-    minQuantity: 1,
-    startDate: "2026-10-01",
-    endDate: "2026-12-31",
-    usageLimit: 200,
-    usedCount: 48,
-    appliesTo: "Subscriptions",
-    status: "Active",
-  },
-  {
-    id: 3,
-    code: "NEWYEAR15",
-    name: "New Year Special",
-    type: "Percentage",
-    value: 15,
-    minPurchase: 1000,
-    minQuantity: 2,
-    startDate: "2027-01-01",
-    endDate: "2027-01-31",
-    usageLimit: 300,
-    usedCount: 0,
-    appliesTo: "Products",
-    status: "Scheduled",
-  },
-  {
-    id: 4,
-    code: "EARLYBIRD",
-    name: "Early Bird Offer",
-    type: "Percentage",
-    value: 10,
-    minPurchase: 0,
-    minQuantity: 1,
-    startDate: "2026-01-01",
-    endDate: "2026-06-30",
-    usageLimit: 100,
-    usedCount: 100,
-    appliesTo: "Both",
-    status: "Expired",
-  },
-];
 
 const emptyForm = {
   code: "",
@@ -144,7 +82,8 @@ function formatMoney(amount: number) {
 }
 
 export default function Discounts() {
-  const [discounts, setDiscounts] = useState<Discount[]>(initialDiscounts);
+  const { rows: discounts, insert, update, remove, error: loadError } =
+    useTable<Discount>("discounts");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
@@ -210,7 +149,7 @@ export default function Discounts() {
     setShowModal(true);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
@@ -272,72 +211,50 @@ export default function Discounts() {
       return;
     }
 
-    if (editingId !== null) {
-      setDiscounts((previous) =>
-        previous.map((discount) =>
-          discount.id === editingId
-            ? {
-                ...discount,
-                code: normalizedCode,
-                name: form.name.trim(),
-                type: form.type,
-                value,
-                minPurchase,
-                minQuantity,
-                startDate: form.startDate,
-                endDate: form.endDate,
-                usageLimit,
-                appliesTo: form.appliesTo,
-              }
-            : discount
-        )
-      );
-    } else {
-      const newDiscount: Discount = {
-        id: Date.now(),
-        code: normalizedCode,
-        name: form.name.trim(),
-        type: form.type,
-        value,
-        minPurchase,
-        minQuantity,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        usageLimit,
-        usedCount: 0,
-        appliesTo: form.appliesTo,
-        status: "Active",
-      };
+    const payload = {
+      code: normalizedCode,
+      name: form.name.trim(),
+      type: form.type,
+      value,
+      minPurchase,
+      minQuantity,
+      startDate: form.startDate,
+      endDate: form.endDate,
+      usageLimit,
+      appliesTo: form.appliesTo,
+    };
 
-      setDiscounts((previous) => [newDiscount, ...previous]);
+    // usedCount is never sent from the browser (starts at 0 in the database)
+    const result =
+      editingId !== null
+        ? await update(editingId, payload)
+        : await insert({ ...payload, status: "Active" });
+
+    if (result.error) {
+      setError(result.error);
+      return;
     }
 
     setShowModal(false);
     setForm(emptyForm);
   }
 
-  function toggleStatus(id: number) {
-    setDiscounts((previous) =>
-      previous.map((discount) =>
-        discount.id === id
-          ? {
-              ...discount,
-              status:
-                getStatus(discount) === "Inactive" ? "Active" : "Inactive",
-            }
-          : discount
-      )
-    );
+  async function toggleStatus(id: number) {
+    const discount = discounts.find((d) => d.id === id);
+    if (!discount) return;
+    const { error } = await update(id, {
+      status: getStatus(discount) === "Inactive" ? "Active" : "Inactive",
+    });
+    if (error) alert(error);
   }
 
-  function deleteDiscount(id: number) {
+  async function deleteDiscount(id: number) {
     if (!window.confirm("Are you sure you want to delete this discount?")) {
       return;
     }
 
-    setDiscounts((previous) =>
-      previous.filter((discount) => discount.id !== id)
-    );
+    const { error } = await remove(id);
+    if (error) alert(error);
   }
 
   return (
@@ -356,6 +273,8 @@ export default function Discounts() {
           Create Discount
         </button>
       </div>
+
+      {loadError && <p role="alert" style={{ color: "#b91c1c" }}>{loadError}</p>}
 
       <div className="discount-stats">
         <div className="discount-stat-card">
@@ -578,10 +497,6 @@ export default function Discounts() {
           </table>
         </div>
 
-        <p className="discount-demo-note">
-          Demo mode: discount data is stored in component state and resets
-          when the page is refreshed. Connect Supabase for permanent storage.
-        </p>
       </section>
 
       {showModal && (

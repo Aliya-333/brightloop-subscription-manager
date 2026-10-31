@@ -1,5 +1,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
+import { supabase } from "./lib/supabase";
+import { errorMessage } from "./lib/useTable";
 import {
   Search,
   HelpCircle,
@@ -100,10 +102,29 @@ function HelpSupport() {
     });
   }, [search, category]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
+      return;
+    }
+
+    setSending(true);
+    setSendError("");
+    // user_id is filled in by the database from the signed-in session
+    const { error } = await supabase.from("support_tickets").insert({
+      name: name.trim().slice(0, 120),
+      email: email.trim().slice(0, 254),
+      subject: subject.trim().slice(0, 200),
+      message: message.trim().slice(0, 5000),
+    });
+    setSending(false);
+
+    if (error) {
+      setSendError(errorMessage(error));
       return;
     }
 
@@ -299,7 +320,7 @@ function HelpSupport() {
           {submitted && (
             <div className="help-success">
               <CheckCircle size={17} />
-              Request submitted in this demo session.
+              Request submitted. Our team will get back to you.
             </div>
           )}
 
@@ -347,7 +368,8 @@ function HelpSupport() {
             />
           </label>
 
-          <button type="submit" className="help-submit-btn">
+          {sendError && <p role="alert" style={{ color: "#b91c1c" }}>{sendError}</p>}
+          <button type="submit" className="help-submit-btn" disabled={sending}>
             <Send size={17} />
             Submit Request
           </button>
