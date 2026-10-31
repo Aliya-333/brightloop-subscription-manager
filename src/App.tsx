@@ -1,0 +1,391 @@
+
+import {
+  LayoutDashboard,
+  Users,
+  Package,
+  Layers,
+  Repeat,
+  FileText,
+  BadgePercent,
+  CreditCard,
+  ChartNoAxesCombined,
+  Settings,
+  Search,
+  Bell,
+  Plus,
+  Wallet,
+  CalendarDays,
+  Menu,
+  HelpCircle,
+  UsersRound,
+  CheckCircle2,
+  RefreshCw,
+  Tag,
+  Clock,
+} from "lucide-react";
+
+import "./App.css";
+
+const navigation = [
+  { label: "Dashboard", icon: LayoutDashboard },
+  { label: "Products", icon: Package },
+  { label: "Plans", icon: Layers },
+  { label: "Subscriptions", icon: Repeat },
+  { label: "Invoices", icon: FileText },
+  { label: "Payments", icon: CreditCard },
+  { label: "Customers", icon: Users },
+  { label: "Discounts", icon: BadgePercent },
+  { label: "Reports", icon: ChartNoAxesCombined },
+];
+
+const stats = [
+  {
+    label: "Active Subscriptions",
+    value: "248",
+    change: "+12%",
+    icon: Repeat,
+    color: "purple",
+    trend: [25, 35, 30, 48, 42, 65, 80],
+  },
+  {
+    label: "Total Revenue",
+    value: "₹4,85,320",
+    change: "+18%",
+    icon: Wallet,
+    color: "green",
+    trend: [30, 45, 35, 60, 52, 75, 90],
+  },
+  {
+    label: "Payments Received",
+    value: "₹4,12,840",
+    change: "+16%",
+    icon: CreditCard,
+    color: "blue",
+    trend: [20, 35, 30, 50, 45, 70, 85],
+  },
+  {
+    label: "Overdue Invoices",
+    value: "32",
+    change: "+5%",
+    icon: Clock,
+    color: "orange",
+    trend: [30, 25, 45, 35, 50, 42, 65],
+  },
+];
+
+const activities = [
+  {
+    title: "New subscription #SUB-1048 created",
+    time: "2 min ago",
+    icon: FileText,
+    color: "purple",
+  },
+  {
+    title: "Invoice #INV-2032 paid ₹1,999",
+    time: "5 min ago",
+    icon: CheckCircle2,
+    color: "green",
+  },
+  {
+    title: "Subscription renewed #SUB-1047",
+    time: "12 min ago",
+    icon: RefreshCw,
+    color: "blue",
+  },
+  {
+    title: "Discount applied Flat ₹500 off",
+    time: "18 min ago",
+    icon: Tag,
+    color: "orange",
+  },
+];
+
+function App() {
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-symbol">∞</div>
+          <div className="brand-name">Brightloop</div>
+        </div>
+
+        <div className="nav-section-title">WORKSPACE</div>
+
+        <nav className="navigation">
+          {navigation.map((item, index) => {
+            const Icon = item.icon;
+
+            return (
+              <a
+                href="#"
+                key={item.label}
+                className={`nav-item ${index === 0 ? "active" : ""}`}
+                onClick={(e) => e.preventDefault()}
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </a>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <a href="#" className="nav-item" onClick={(e) => e.preventDefault()}>
+            <Settings size={18} />
+            <span>Settings</span>
+          </a>
+
+          <a href="#" className="nav-item" onClick={(e) => e.preventDefault()}>
+            <UsersRound size={18} />
+            <span>Team</span>
+          </a>
+
+          <a href="#" className="nav-item" onClick={(e) => e.preventDefault()}>
+            <HelpCircle size={18} />
+            <span>Help & Support</span>
+          </a>
+
+          <div className="profile-card">
+            <div className="profile-avatar">A</div>
+            <div className="profile-info">
+              <strong>Admin User</strong>
+              <span>Administrator</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main className="main-area">
+        <header className="topbar">
+          <button className="mobile-menu" aria-label="Open menu">
+            <Menu size={21} />
+          </button>
+
+          <div className="search-box">
+            <Search size={17} />
+            <input placeholder="Search anything..." />
+          </div>
+
+          <div className="topbar-right">
+            <div className="event-brand">
+              <strong>odoo</strong>
+              <span>
+                Odoo x Make-A-Ton 9.0
+                <small>Kochi 2026</small>
+              </span>
+            </div>
+
+            <button className="icon-button" aria-label="Notifications">
+              <Bell size={20} />
+              <i className="notification-dot" />
+            </button>
+
+            <div className="top-avatar">A</div>
+          </div>
+        </header>
+
+        <div className="dashboard-content">
+          <section className="welcome-section">
+            <div>
+              <div className="welcome-label">SATURDAY, OCTOBER 31, 2026</div>
+              <h1>Welcome back, Admin!</h1>
+              <p>Here's what's happening with your subscriptions today.</p>
+            </div>
+
+            <button className="create-button">
+              <Plus size={18} />
+              Create Subscription
+            </button>
+          </section>
+
+          <section className="stats-grid">
+            {stats.map((stat) => {
+              const Icon = stat.icon;
+
+              return (
+                <article className={`stat-card ${stat.color}`} key={stat.label}>
+                  <div className="stat-heading">
+                    <div>
+                      <span>{stat.label}</span>
+                      <h2>{stat.value}</h2>
+                      <p className="stat-growth">{stat.change} <span>compared to last month</span></p>
+                    </div>
+
+                    <div className="stat-icon">
+                      <Icon size={21} />
+                    </div>
+                  </div>
+
+                  <div className="mini-chart">
+                    {stat.trend.map((height, index) => (
+                      <div
+                        key={index}
+                        className="mini-chart-bar"
+                        style={{ height: `${height}%` }}
+                      />
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+
+          <section className="dashboard-grid">
+            <article className="panel revenue-panel">
+              <div className="panel-header">
+                <div>
+                  <h3>Revenue Overview</h3>
+                  <p>Monthly revenue performance</p>
+                </div>
+
+                <select defaultValue="month">
+                  <option value="month">This Month</option>
+                  <option value="week">This Week</option>
+                  <option value="year">This Year</option>
+                </select>
+              </div>
+
+              <div className="revenue-total">₹4,85,320</div>
+              <div className="revenue-growth">↑ 18% compared to last month</div>
+
+              <div className="chart">
+                <div className="chart-grid">
+                  <span>5L</span>
+                  <span>4L</span>
+                  <span>3L</span>
+                  <span>2L</span>
+                  <span>1L</span>
+                  <span>0</span>
+                </div>
+
+                <svg
+                  className="revenue-svg"
+                  viewBox="0 0 600 220"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label="Illustrative revenue trend chart"
+                >
+                  <defs>
+                    <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#9db9ff" stopOpacity=".38" />
+                      <stop offset="100%" stopColor="#9db9ff" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  {[25, 65, 105, 145, 185].map((y) => (
+                    <line
+                      key={y}
+                      x1="0"
+                      y1={y}
+                      x2="600"
+                      y2={y}
+                      stroke="rgba(255,255,255,.15)"
+                      strokeDasharray="4 5"
+                    />
+                  ))}
+
+                  <path
+                    d="M0 170 L90 168 L155 135 L220 143 L290 110 L350 120 L420 90 L490 75 L550 50 L600 25 L600 220 L0 220 Z"
+                    fill="url(#areaFill)"
+                  />
+
+                  <path
+                    d="M0 170 L90 168 L155 135 L220 143 L290 110 L350 120 L420 90 L490 75 L550 50 L600 25"
+                    fill="none"
+                    stroke="#b9ccff"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {[
+                    [0, 170], [155, 135], [220, 143], [290, 110],
+                    [350, 120], [420, 90], [490, 75], [550, 50], [600, 25],
+                  ].map(([x, y], index) => (
+                    <circle
+                      key={index}
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      fill="#fff"
+                      stroke="#6c8cff"
+                      strokeWidth="2"
+                    />
+                  ))}
+                </svg>
+
+                <div className="chart-months">
+                  <span>1 Oct</span>
+                  <span>7 Oct</span>
+                  <span>14 Oct</span>
+                  <span>21 Oct</span>
+                  <span>31 Oct</span>
+                </div>
+              </div>
+              <p className="sample-note">Illustrative figures — live financial data will be connected later.</p>
+            </article>
+
+            <article className="panel subscription-panel">
+              <div className="panel-header">
+                <div>
+                  <h3>Subscription Status</h3>
+                  <p>Overview of all subscriptions</p>
+                </div>
+              </div>
+
+              <div className="donut-area">
+                <div className="donut-chart">
+                  <div className="donut-center">
+                    <strong>248</strong>
+                    <span>Total</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="status-list">
+                <div><span><i className="status-dot active-dot" /> Active</span><strong>72%</strong></div>
+                <div><span><i className="status-dot paused-dot" /> Paused</span><strong>12%</strong></div>
+                <div><span><i className="status-dot cancelled-dot" /> Cancelled</span><strong>8%</strong></div>
+                <div><span><i className="status-dot expired-dot" /> Expired</span><strong>8%</strong></div>
+              </div>
+            </article>
+
+            <article className="panel activity-panel">
+              <div className="panel-header">
+                <div>
+                  <h3>Recent Activity</h3>
+                  <p>Latest updates</p>
+                </div>
+                <button className="view-all">View All →</button>
+              </div>
+
+              <div className="activity-list">
+                {activities.map((activity) => {
+                  const Icon = activity.icon;
+
+                  return (
+                    <div className="activity-item" key={activity.title}>
+                      <div className={`activity-icon ${activity.color}`}>
+                        <Icon size={17} />
+                      </div>
+                      <div className="activity-info">
+                        <strong>{activity.title}</strong>
+                        <span>{activity.time}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          </section>
+
+          <footer className="dashboard-footer">
+            Brightloop Subscription Manager <span>•</span> Odoo x Make-A-Ton 9.0 Kochi 2026
+          </footer>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;
