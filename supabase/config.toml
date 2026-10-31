@@ -1,10 +1,14 @@
 # Used by the Supabase CLI (`supabase start` / `supabase db push`). The hosted project's
 # equivalents live in Dashboard → Authentication — see README "Backend setup".
-project_id = "tsvpicpgfxjxujzicfm"
+project_id = "wmmmbahpithwzsyccjpi"
 
 [auth]
 site_url = "http://localhost:5173"
 enable_signup = false              # invite-only: users are created by an Admin
+enable_anonymous_sign_ins = false
+# Password recovery: the emailed link must land on a URL listed here (and on the hosted project,
+# in Dashboard -> Authentication -> URL Configuration -> Redirect URLs). Add the production URL too.
+additional_redirect_urls = ["http://localhost:5173"]
 minimum_password_length = 10
 password_requirements = "lower_upper_letters_digits"
 
@@ -14,4 +18,7 @@ double_confirm_changes = true
 secure_password_change = true
 
 [functions.manage-member]
+verify_jwt = true
+
+[functions.invite-customer]
 verify_jwt = true
