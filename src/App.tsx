@@ -1,11 +1,17 @@
 
-
 import { useState } from "react";
+
 import Products from "./Products";
 import Plans from "./Plans";
 import Subscriptions from "./Subscriptions";
 import Invoices from "./Invoices";
 import Payments from "./Payments";
+import Customers from "./Customers";
+import Discounts from "./Discounts";
+import Reports from "./Reports";
+import SettingsPage from "./Settings";
+import Team from "./Team";
+import HelpSupport from "./HelpSupport";
 
 import {
   LayoutDashboard,
@@ -17,7 +23,7 @@ import {
   BadgePercent,
   CreditCard,
   ChartNoAxesCombined,
-  Settings,
+  Settings as SettingsIcon,
   Search,
   Bell,
   Plus,
@@ -147,7 +153,7 @@ function App() {
             }`}
             onClick={() => setActivePage("Settings")}
           >
-            <Settings size={18} />
+            <SettingsIcon size={18} />
             <span>Settings</span>
           </button>
 
@@ -488,16 +494,28 @@ function App() {
             </footer>
           </div>
         ) : activePage === "Products" ? (
-  <Products />
-) : activePage === "Plans" ? (
-  <Plans />
-) : activePage === "Subscriptions" ? (
-  <Subscriptions />
-) : activePage === "Invoices" ? (
-  <Invoices />  
-  ) : activePage === "Payments" ? (
-  <Payments />
-) : (
+          <Products />
+        ) : activePage === "Plans" ? (
+          <Plans />
+        ) : activePage === "Subscriptions" ? (
+          <Subscriptions />
+        ) : activePage === "Invoices" ? (
+          <Invoices />
+        ) : activePage === "Payments" ? (
+          <Payments />
+        ) : activePage === "Customers" ? (
+          <Customers />
+        ) : activePage === "Discounts" ? (
+          <Discounts />
+        ) : activePage === "Reports" ? (
+          <Reports />
+        ) : activePage === "Settings" ? (
+          <SettingsPage />
+        ) : activePage === "Team" ? (
+          <Team />
+        ) : activePage === "Help & Support" ? (
+          <HelpSupport />
+        ) : (
           /* OTHER PAGES */
           <div className="dashboard-content">
             <section className="welcome-section">
@@ -526,3 +544,4 @@ function App() {
 }
 
 export default App;
+

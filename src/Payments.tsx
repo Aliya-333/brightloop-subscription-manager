@@ -10,7 +10,6 @@ import {
   X,
   Eye,
   Trash2,
-  Download,
 } from "lucide-react";
 import "./payments.css";
 
