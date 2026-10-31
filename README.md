@@ -245,7 +245,7 @@ Handling large numbers of subscriptions efficiently.
 Targeting page response times under two seconds.
 Project Status
 
-Currently under development.
+Currently under development..
 
 Built as part of Odoo x Make-A-Ton 9.0 – Kochi 2026.
 
